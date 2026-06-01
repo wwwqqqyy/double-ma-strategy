@@ -1,0 +1,48 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+date_range = pd.date_range(start="2022-01-01", end="2023-01-01", freq="D")
+np.random.seed(10)
+price = 1700 + np.cumsum(np.random.randn(len(date_range)) * 12)
+df = pd.DataFrame({"trade_date": date_range, "close": price})
+
+df["ma5"] = df["close"].rolling(5).mean()
+df["ma20"] = df["close"].rolling(20).mean()
+df["signal"] = np.where(df["ma5"]>df["ma20"],1,-1)
+
+init_capital = 100000
+cash = init_capital
+stock_num = 0
+asset_list = []
+for _,row in df.iterrows():
+    p = row["close"]
+    sig = row["signal"]
+    if sig == 1 and stock_num == 0:
+        stock_num = cash // p
+        cash -= stock_num * p
+    elif sig == -1 and stock_num > 0:
+        cash += stock_num * p
+        stock_num =0
+    total_asset = cash + stock_num * p
+    asset_list.append(total_asset)
+
+df["total_asset"] = asset_list
+final_asset = asset_list[-1]
+return_rate = (final_asset - init_capital)/init_capital
+
+print("=====5-20双均线策略回测结果=====")
+print(f"回测区间：2022.01.01 ~ 2023.01.01")
+print(f"初始资金：{init_capital} 元")
+print(f"期末总资产：{round(final_asset,2)} 元")
+print(f"总收益率：{round(return_rate*100,2)} %")
+
+plt.rcParams["font.sans-serif"] = ["SimHei"]
+plt.figure(figsize=(12,6))
+plt.plot(df["trade_date"],df["total_asset"],color="red",label="策略总资产")
+plt.title("5-20双均线策略资产净值曲线")
+plt.xlabel("日期")
+plt.ylabel("总资产(元)")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
